@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "start": "serve dist -l ${PORT:-80} -s",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx"
   },
@@ -24,7 +25,8 @@
     "lucide-react": "^0.395.0",
     "react-virtuoso": "^4.7.11",
     "recharts": "^2.12.7",
-    "react-hot-toast": "^2.4.1"
+    "react-hot-toast": "^2.4.1",
+    "serve": "^14.2.4"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
