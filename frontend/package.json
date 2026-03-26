@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "node server.cjs",
+    "start": "vite build && node server.cjs",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx"
   },
