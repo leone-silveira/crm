@@ -26,11 +26,14 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY prisma ./prisma
+COPY src ./src
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/app.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
 
 # ─── Development (usado pelo docker-compose) ─────────────────────────────
 FROM node:20-slim AS development

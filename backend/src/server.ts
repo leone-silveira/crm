@@ -160,6 +160,7 @@ export async function buildServer() {
 
   // Initialize Baileys with Socket.io for real-time events
   baileysManager.setIO(io)
+  await baileysManager.restoreAllSessions()
 
   return { app, io }
 }
