@@ -63,11 +63,18 @@ export const useConversationStore = create<ConversationState>((set) => ({
     })),
 
   appendMessage: (conversationId, message) =>
-    set((state) => ({
-      conversations: state.conversations.map((c) =>
+    set((state) => {
+      const updated = state.conversations.map((c) =>
         c.id === conversationId
-          ? { ...c, lastMessageAt: message.timestamp, messages: [...(c.messages ?? []), message] }
+          ? { ...c, lastMessageAt: message.timestamp, messages: [message] }
           : c,
-      ),
-    })),
+      )
+      // Re-sort by lastMessageAt so newest conversation goes to top
+      updated.sort((a, b) => {
+        const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0
+        const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0
+        return bTime - aTime
+      })
+      return { conversations: updated }
+    }),
 }))

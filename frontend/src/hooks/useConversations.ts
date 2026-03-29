@@ -10,6 +10,7 @@ export function useConversations(params?: {
   page?: number
 }) {
   const setConversations = useConversationStore((s) => s.setConversations)
+  const qc = useQueryClient()
 
   const query = useQuery({
     queryKey: ['conversations', params],
@@ -20,6 +21,13 @@ export function useConversations(params?: {
   useEffect(() => {
     if (query.data?.data) setConversations(query.data.data)
   }, [query.data])
+
+  // Listen for real-time refresh events (new conversations from webhooks)
+  useEffect(() => {
+    const handler = () => qc.invalidateQueries({ queryKey: ['conversations'] })
+    window.addEventListener('conversations:refresh', handler)
+    return () => window.removeEventListener('conversations:refresh', handler)
+  }, [qc])
 
   return query
 }

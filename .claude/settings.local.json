@@ -20,7 +20,9 @@
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(node_modules/.bin/vite build:*)",
       "Bash(npx tsc:*)",
-      "Bash(timeout 10 npx tsx src/app.ts)"
+      "Bash(timeout 10 npx tsx src/app.ts)",
+      "Bash(find /c/Users/leone/OneDrive/Área de Trabalho/Code/crm_module/backend/src -type f \\\\\\(-name *.ts -o -name *.js \\\\\\))",
+      "Bash(xargs grep:*)"
     ]
   }
 }

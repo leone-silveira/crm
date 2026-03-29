@@ -118,13 +118,26 @@ export async function messagesRoutes(app: FastifyInstance) {
       },
     })
 
-    await prisma.conversation.update({
+    const updatedConv = await prisma.conversation.update({
       where: { id: body.conversationId },
       data: { lastMessageAt: new Date() },
+      include: {
+        contact: true,
+        assignedTo: { select: { id: true, name: true } },
+        instance: { select: { id: true, name: true } },
+      },
     })
 
     // Broadcast to room
     app.io.to(`conversation:${body.conversationId}`).emit('message:new', message)
+    // Notify conversation list so preview updates for other users
+    const scope = updatedConv.clientAdminId
+    const convWithMessage = { ...updatedConv, messages: [message] }
+    if (scope) {
+      app.io.to(`scope:${scope}`).emit('conversation:updated', convWithMessage)
+    } else {
+      app.io.emit('conversation:updated', convWithMessage)
+    }
 
     return reply.status(201).send(message)
   })

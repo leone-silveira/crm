@@ -143,12 +143,13 @@ async function handleMessageUpsert(app: FastifyInstance, instanceName: string, d
     })
 
     // Broadcast via Socket.io — scoped
+    const conversationWithMessage = { ...conversation, messages: [message] }
     app.io.to(`conversation:${conversation.id}`).emit('message:new', message)
     if (conversation.clientAdminId) {
-      app.io.to(`scope:${conversation.clientAdminId}`).emit('conversation:updated', conversation)
+      app.io.to(`scope:${conversation.clientAdminId}`).emit('conversation:updated', conversationWithMessage)
       app.io.to(`scope:${conversation.clientAdminId}`).emit('conversations:refresh')
     } else {
-      app.io.emit('conversation:updated', conversation)
+      app.io.emit('conversation:updated', conversationWithMessage)
       app.io.emit('conversations:refresh')
     }
 

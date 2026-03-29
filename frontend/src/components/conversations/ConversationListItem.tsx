@@ -20,7 +20,7 @@ export default function ConversationListItem({ conversation, isActive, onClick }
   const contact = conversation.contact
   const name = contact.name ?? contact.pushName ?? contact.phone
   const lastMsg = conversation.messages?.[0]
-  const preview = lastMsg?.body ?? (lastMsg?.type !== 'TEXT' ? `[${lastMsg?.type}]` : '')
+  const preview = lastMsg?.body ?? (lastMsg?.type && lastMsg.type !== 'TEXT' ? `[${lastMsg.type}]` : '')
 
   return (
     <button
