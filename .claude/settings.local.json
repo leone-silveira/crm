@@ -19,7 +19,8 @@
       "Bash(npx --no-install tsc --noEmit)",
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(node_modules/.bin/vite build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(timeout 10 npx tsx src/app.ts)"
     ]
   }
 }
