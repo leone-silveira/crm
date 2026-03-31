@@ -365,6 +365,7 @@ class BaileysManager {
   async sendText(instanceName: string, phone: string, text: string) {
     const session = this.sessions.get(instanceName)
     if (!session) throw new Error(`Instance "${instanceName}" is not connected`)
+    if (!session.socket.user) throw new Error(`Instance "${instanceName}" is still connecting — wait for QR scan to complete`)
     const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`
     return session.socket.sendMessage(jid, { text })
   }
@@ -378,6 +379,7 @@ class BaileysManager {
   }) {
     const session = this.sessions.get(instanceName)
     if (!session) throw new Error(`Instance "${instanceName}" is not connected`)
+    if (!session.socket.user) throw new Error(`Instance "${instanceName}" is still connecting — wait for QR scan to complete`)
     const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`
 
     let msg: any
@@ -433,7 +435,10 @@ class BaileysManager {
   }
 
   getStatus(instanceName: string): string {
-    return this.sessions.has(instanceName) ? 'connected' : 'disconnected'
+    const session = this.sessions.get(instanceName)
+    if (!session) return 'disconnected'
+    // Check if the socket is actually usable (has user info = fully connected)
+    return session.socket.user ? 'connected' : 'connecting'
   }
 
   async deleteSession(instanceName: string) {

@@ -37,8 +37,8 @@ export default function MessageInput({ conversationId, onSent }: Props) {
       onSent(message)
       setText('')
       textareaRef.current?.focus()
-    } catch {
-      toast.error('Failed to send message')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'Failed to send message')
     } finally {
       setSending(false)
     }
@@ -70,8 +70,8 @@ export default function MessageInput({ conversationId, onSent }: Props) {
       })
       onSent(message)
       setText('')
-    } catch {
-      toast.error('Failed to send file')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'Failed to send file')
     } finally {
       setSending(false)
     }

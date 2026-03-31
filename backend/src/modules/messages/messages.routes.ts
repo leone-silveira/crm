@@ -78,9 +78,18 @@ export async function messagesRoutes(app: FastifyInstance) {
     })
     if (!conv) throw notFound('Conversation')
 
-    const instanceName = conv.instance?.name ?? 'default'
-    let evolutionId: string | undefined
+    const instanceName = conv.instance?.name
+    if (!instanceName) {
+      return reply.status(400).send({ message: 'Conversation has no WhatsApp instance linked' })
+    }
 
+    // Check if instance is connected before attempting to send
+    const instanceStatus = baileysManager.getStatus(instanceName)
+    if (instanceStatus !== 'connected') {
+      return reply.status(503).send({ message: `WhatsApp instance "${instanceName}" is disconnected. Please reconnect from the Instances page.` })
+    }
+
+    let evolutionId: string | undefined
     try {
       if (body.type === 'TEXT') {
         const response = await baileysManager.sendText(
@@ -99,8 +108,9 @@ export async function messagesRoutes(app: FastifyInstance) {
         })
         evolutionId = response?.key?.id ?? undefined
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Baileys send failed:', err)
+      return reply.status(502).send({ message: err.message ?? 'Failed to send message via WhatsApp' })
     }
 
     const message = await prisma.message.create({
@@ -113,7 +123,7 @@ export async function messagesRoutes(app: FastifyInstance) {
         mimeType: body.mimeType,
         fileName: body.fileName,
         evolutionId,
-        status: evolutionId ? 'SENT' : 'PENDING',
+        status: 'SENT',
         timestamp: new Date(),
       },
     })
