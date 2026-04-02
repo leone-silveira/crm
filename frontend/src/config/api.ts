@@ -1,7 +1,9 @@
 import axios from 'axios'
 import { useAuthStore } from '../store/auth.store'
 
-import { backendUrl } from './runtime'
+// In dev, use relative path so requests go through Vite proxy.
+// In production (static build), use the real backend URL.
+const backendUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
 
 export const api = axios.create({
   baseURL: `${backendUrl}/api`,

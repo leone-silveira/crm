@@ -17,6 +17,7 @@ import { prisma } from '../config/database'
 import { redis } from '../config/redis'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
+import { downloadProfilePic } from '../utils/downloadProfilePic'
 
 const SESSIONS_DIR = path.join(process.cwd(), 'baileys-sessions')
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads')
@@ -280,11 +281,14 @@ class BaileysManager {
       create: contactData,
     })
 
-    // Fetch profile picture if not set
+    // Fetch and locally cache profile picture if not set (CDN URLs expire)
     if (!contact.profilePic) {
-      const pic = await this.getProfilePicture(instanceName, phone).catch(() => undefined)
-      if (pic) {
-        await prisma.contact.update({ where: { id: contact.id }, data: { profilePic: pic } })
+      const cdnUrl = await this.getProfilePicture(instanceName, phone).catch(() => undefined)
+      if (cdnUrl) {
+        const localPic = await downloadProfilePic(cdnUrl)
+        if (localPic) {
+          await prisma.contact.update({ where: { id: contact.id }, data: { profilePic: localPic } })
+        }
       }
     }
 

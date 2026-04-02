@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useAuthStore } from '../store/auth.store'
-import { backendUrl } from '../config/runtime'
+
+const backendUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
 
 /**
  * Ao montar o app, tenta renovar o accessToken usando o refreshToken (cookie httpOnly).

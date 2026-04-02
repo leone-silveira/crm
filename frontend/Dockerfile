@@ -2,6 +2,10 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Declare build args so Railway env vars are visible during Vite build
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 COPY package*.json ./
 RUN npm ci
 
@@ -15,13 +19,11 @@ WORKDIR /app
 RUN npm install -g serve
 
 COPY --from=builder /app/dist ./dist
-COPY docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
 
 ENV PORT=80
 EXPOSE 80
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["sh", "-c", "serve dist -l $PORT -s"]
 
 # ─── Local with nginx (docker-compose) ──────────────────────────────────────
 FROM nginx:alpine AS local

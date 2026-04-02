@@ -6,6 +6,7 @@ import { redis } from '../../config/redis'
 import { isLidUser } from '@whiskeysockets/baileys'
 import { categorizeMessage } from '../../services/categorization.service'
 import { calculateSlaDeadline, getPriorityFromVip } from '../../services/sla.service'
+import { downloadProfilePic } from '../../utils/downloadProfilePic'
 
 interface EvolutionWebhookPayload {
   event: string
@@ -108,12 +109,14 @@ async function handleMessageUpsert(app: FastifyInstance, instanceName: string, d
       create: contactData,
     })
 
-    // Fetch profile picture if not set
+    // Fetch and locally cache profile picture if not set (CDN URLs expire)
     if (!contact.profilePic) {
-      const jidForPic = isGroup ? phone : phone
-      const pic = await evolutionApi.getProfilePicture(instanceName, jidForPic).catch(() => undefined)
-      if (pic) {
-        await prisma.contact.update({ where: { id: contact.id }, data: { profilePic: pic } })
+      const cdnUrl = await evolutionApi.getProfilePicture(instanceName, phone).catch(() => undefined)
+      if (cdnUrl) {
+        const localPic = await downloadProfilePic(cdnUrl)
+        if (localPic) {
+          await prisma.contact.update({ where: { id: contact.id }, data: { profilePic: localPic } })
+        }
       }
     }
 

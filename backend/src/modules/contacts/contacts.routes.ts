@@ -5,6 +5,7 @@ import { authenticate } from '../../middleware/authenticate'
 import { notFound } from '../../utils/errors'
 import { getPaginationParams, buildPaginatedResult } from '../../utils/pagination'
 import { baileysManager } from '../../services/baileys.service'
+import { downloadProfilePic } from '../../utils/downloadProfilePic'
 
 export async function contactsRoutes(app: FastifyInstance) {
   const auth = { preHandler: [authenticate] }
@@ -124,8 +125,10 @@ export async function contactsRoutes(app: FastifyInstance) {
     }
 
     if (pic) {
-      await prisma.contact.update({ where: { id }, data: { profilePic: pic } })
-      return { profilePic: pic }
+      const localPic = await downloadProfilePic(pic)
+      const saved = localPic ?? pic
+      await prisma.contact.update({ where: { id }, data: { profilePic: saved } })
+      return { profilePic: saved }
     }
     return reply.status(404).send({ error: 'Profile picture not available' })
   })
