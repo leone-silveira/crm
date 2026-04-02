@@ -219,26 +219,32 @@ class BaileysManager {
             const realContact = await prisma.contact.findUnique({ where: { phone } })
             if (realContact) {
               // Both exist — merge LID conversations into real contact
-              // First, handle conversations that would conflict on (contactId, instanceId)
               const lidConversations = await prisma.conversation.findMany({ where: { contactId: lidContact.id } })
-              for (const lidConv of lidConversations) {
-                const existingConv = await prisma.conversation.findUnique({
-                  where: { contactId_instanceId: { contactId: realContact.id, instanceId: lidConv.instanceId } },
+              if (lidConversations.length > 0) {
+                const lidInstanceIds = lidConversations.map(c => c.instanceId).filter((id): id is string => id !== null)
+                const realConvsByInstance = await prisma.conversation.findMany({
+                  where: { contactId: realContact.id, instanceId: { in: lidInstanceIds } },
+                  select: { id: true, instanceId: true },
                 })
-                if (existingConv) {
-                  // Move messages from LID conversation to real conversation
-                  await prisma.message.updateMany({
-                    where: { conversationId: lidConv.id },
-                    data: { conversationId: existingConv.id },
-                  })
-                  await prisma.conversation.delete({ where: { id: lidConv.id } })
-                } else {
-                  // No conflict — just reassign
-                  await prisma.conversation.update({
-                    where: { id: lidConv.id },
+                const realConvMap = new Map(realConvsByInstance.map(c => [c.instanceId, c.id]))
+                const conflicting = lidConversations.filter(c => c.instanceId && realConvMap.has(c.instanceId))
+                const nonConflicting = lidConversations.filter(c => !c.instanceId || !realConvMap.has(c.instanceId))
+                await prisma.$transaction([
+                  // Move messages from conflicting LID convs to real convs first
+                  ...conflicting.map(lidConv =>
+                    prisma.message.updateMany({
+                      where: { conversationId: lidConv.id },
+                      data: { conversationId: realConvMap.get(lidConv.instanceId!)! },
+                    })
+                  ),
+                  // Delete conflicting LID conversations
+                  prisma.conversation.deleteMany({ where: { id: { in: conflicting.map(c => c.id) } } }),
+                  // Reassign non-conflicting LID conversations to real contact
+                  ...(nonConflicting.length > 0 ? [prisma.conversation.updateMany({
+                    where: { id: { in: nonConflicting.map(c => c.id) } },
                     data: { contactId: realContact.id },
-                  })
-                }
+                  })] : []),
+                ])
               }
               await prisma.contact.delete({ where: { id: lidContact.id } })
               logger.info({ lid: lidForPhone, phone }, 'Merged LID contact into real phone contact')
@@ -340,11 +346,11 @@ class BaileysManager {
           reuploadRequest: session?.socket.updateMediaMessage ?? (async (m: any) => m),
         })
         if (buffer) {
-          fs.mkdirSync(UPLOADS_DIR, { recursive: true })
+          await fs.promises.mkdir(UPLOADS_DIR, { recursive: true })
           const ext = this.mimeToExtension(msgContent.mimeType)
           const fileName = `${randomUUID()}${ext}`
           const filePath = path.join(UPLOADS_DIR, fileName)
-          fs.writeFileSync(filePath, buffer)
+          await fs.promises.writeFile(filePath, buffer)
           msgContent.mediaUrl = `/uploads/${fileName}`
           logger.info({ instanceName, fileName, type: msgContent.type }, 'Media downloaded and saved')
         }
@@ -552,7 +558,7 @@ class BaileysManager {
 
     // If the URL points to a local upload, read the file as a buffer.
     // Baileys can send buffers directly — avoids issues with Docker-internal URLs.
-    const mediaSource = this.resolveMediaSource(media.url)
+    const mediaSource = await this.resolveMediaSource(media.url)
 
     let msg: any
     switch (media.type) {
@@ -574,14 +580,12 @@ class BaileysManager {
   }
 
   /** If url points to a local /uploads/ file, return the Buffer; otherwise return { url } for Baileys to fetch. */
-  private resolveMediaSource(url: string): Buffer | { url: string } {
+  private async resolveMediaSource(url: string): Promise<Buffer | { url: string }> {
     try {
       const uploadsMatch = url.match(/\/uploads\/([^/?#]+)/)
       if (uploadsMatch) {
         const filePath = path.join(UPLOADS_DIR, uploadsMatch[1])
-        if (fs.existsSync(filePath)) {
-          return fs.readFileSync(filePath)
-        }
+        return await fs.promises.readFile(filePath)
       }
     } catch (err) {
       logger.warn({ url, err: (err as Error).message }, 'Failed to read local file, falling back to URL')
@@ -666,9 +670,7 @@ class BaileysManager {
       this.sessions.delete(instanceName)
     }
     const sessionDir = path.join(SESSIONS_DIR, instanceName)
-    if (fs.existsSync(sessionDir)) {
-      fs.rmSync(sessionDir, { recursive: true, force: true })
-    }
+    await fs.promises.rm(sessionDir, { recursive: true, force: true })
     await redis.del(`qr:${instanceName}`)
   }
 

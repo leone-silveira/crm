@@ -119,6 +119,9 @@ model Contact {
   tags          ContactTag[]
 
   @@index([phone])
+  @@index([name])
+  @@index([email])
+  @@index([isVip])
   @@map("contacts")
 }
 
@@ -161,6 +164,7 @@ model WhatsAppInstance {
   conversations Conversation[]
 
   @@index([clientAdminId])
+  @@index([status])
   @@map("whatsapp_instances")
 }
 
@@ -192,6 +196,8 @@ model Conversation {
   @@index([assignedToId])
   @@index([lastMessageAt])
   @@index([clientAdminId])
+  @@index([category])
+  @@index([priority])
   @@map("conversations")
 }
 

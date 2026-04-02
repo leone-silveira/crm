@@ -19,11 +19,13 @@ WORKDIR /app
 RUN npm install -g serve
 
 COPY --from=builder /app/dist ./dist
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 ENV PORT=80
 EXPOSE 80
 
-CMD ["sh", "-c", "serve dist -l $PORT -s"]
+CMD ["/docker-entrypoint.sh"]
 
 # ─── Local with nginx (docker-compose) ──────────────────────────────────────
 FROM nginx:alpine AS local

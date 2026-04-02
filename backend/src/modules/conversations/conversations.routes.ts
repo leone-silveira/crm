@@ -40,8 +40,8 @@ export async function conversationsRoutes(app: FastifyInstance) {
         skip,
         take: limit,
         include: {
-          contact: { include: { tags: { include: { tag: true } } } },
-          assignedTo: { select: { id: true, name: true, email: true } },
+          contact: { include: { tags: { take: 10, include: { tag: true } } } },
+          assignedTo: { select: { id: true, name: true } },
           instance: { select: { id: true, name: true, displayName: true } },
           messages: {
             take: 1,
@@ -233,11 +233,13 @@ export async function conversationsRoutes(app: FastifyInstance) {
       scopeWhere.clientAdminId = req.scope
     }
 
-    const [open, inProgress, resolved, closed, totalMessages] = await prisma.$transaction([
-      prisma.conversation.count({ where: { ...scopeWhere, status: 'OPEN' } }),
-      prisma.conversation.count({ where: { ...scopeWhere, status: 'IN_PROGRESS' } }),
-      prisma.conversation.count({ where: { ...scopeWhere, status: 'RESOLVED' } }),
-      prisma.conversation.count({ where: { ...scopeWhere, status: 'CLOSED' } }),
+    const [statusGroups, totalMessages] = await prisma.$transaction([
+      prisma.conversation.groupBy({
+        by: ['status'],
+        where: scopeWhere,
+        _count: { _all: true },
+        orderBy: { status: 'asc' },
+      }),
       prisma.message.count({
         where: {
           createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) },
@@ -246,6 +248,13 @@ export async function conversationsRoutes(app: FastifyInstance) {
       }),
     ])
 
-    return { open, inProgress, resolved, closed, totalMessages }
+    const countMap = new Map(statusGroups.map((r: any) => [r.status, r._count._all]))
+    return {
+      open: countMap.get('OPEN') ?? 0,
+      inProgress: countMap.get('IN_PROGRESS') ?? 0,
+      resolved: countMap.get('RESOLVED') ?? 0,
+      closed: countMap.get('CLOSED') ?? 0,
+      totalMessages,
+    }
   })
 }

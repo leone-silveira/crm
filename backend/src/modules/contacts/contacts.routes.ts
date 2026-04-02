@@ -116,13 +116,13 @@ export async function contactsRoutes(app: FastifyInstance) {
     const contact = await prisma.contact.findUnique({ where: { id } })
     if (!contact) throw notFound('Contact')
 
-    // Try to get pic from any active instance
+    // Try to get pic from all active instances in parallel — take first success
     const instances = await prisma.whatsAppInstance.findMany({ where: { isActive: true, status: 'open' } })
-    let pic: string | undefined
-    for (const inst of instances) {
-      pic = await baileysManager.getProfilePicture(inst.name, contact.phone).catch(() => undefined)
-      if (pic) break
-    }
+    const pic = await Promise.any(
+      instances.map(inst =>
+        baileysManager.getProfilePicture(inst.name, contact.phone).then(p => p ?? Promise.reject())
+      )
+    ).catch(() => undefined)
 
     if (pic) {
       const localPic = await downloadProfilePic(pic)
