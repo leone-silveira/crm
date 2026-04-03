@@ -1,13 +1,17 @@
 import 'dotenv/config'
 import { buildServer } from './server'
 import { env } from './config/env'
-import { connectDatabase, disconnectDatabase } from './config/database'
+import { connectDatabase, disconnectDatabase, prisma } from './config/database'
 import { connectRedis, disconnectRedis } from './config/redis'
 import { logger } from './utils/logger'
 
 async function main() {
   await connectDatabase()
   logger.info('✅ Database connected')
+
+  // Ensure schema columns added after initial deploy exist (safe, idempotent)
+  await prisma.$executeRawUnsafe(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS "isGroup" BOOLEAN NOT NULL DEFAULT false`)
+  logger.info('✅ Schema patches applied')
 
   await connectRedis()
   logger.info('✅ Redis connected')
