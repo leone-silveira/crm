@@ -6,6 +6,7 @@ import { notFound } from '../../utils/errors'
 import { getPaginationParams, buildPaginatedResult } from '../../utils/pagination'
 import { baileysManager } from '../../services/baileys.service'
 import { downloadProfilePic } from '../../utils/downloadProfilePic'
+import { normalizePhone } from '../../utils/phone'
 
 export async function contactsRoutes(app: FastifyInstance) {
   const auth = { preHandler: [authenticate] }
@@ -72,10 +73,11 @@ export async function contactsRoutes(app: FastifyInstance) {
       })
       .parse(req.body)
 
+    const normalized = { ...body, phone: normalizePhone(body.phone) }
     const contact = await prisma.contact.upsert({
-      where: { phone: body.phone },
-      update: body,
-      create: body,
+      where: { phone: normalized.phone },
+      update: normalized,
+      create: normalized,
     })
     return reply.status(201).send(contact)
   })

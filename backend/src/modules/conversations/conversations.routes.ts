@@ -5,6 +5,7 @@ import { authenticate } from '../../middleware/authenticate'
 import { notFound, forbidden } from '../../utils/errors'
 import { getPaginationParams, buildPaginatedResult } from '../../utils/pagination'
 import { canSeeAllConversations } from '../../utils/roles'
+import { normalizePhone } from '../../utils/phone'
 
 export async function conversationsRoutes(app: FastifyInstance) {
   const auth = { preHandler: [authenticate] }
@@ -66,11 +67,12 @@ export async function conversationsRoutes(app: FastifyInstance) {
       })
       .parse(req.body)
 
-    // Find or create the contact
+    // Find or create the contact — normalize phone to match Baileys format
+    const phone = normalizePhone(body.phone)
     const contact = await prisma.contact.upsert({
-      where: { phone: body.phone },
+      where: { phone },
       update: {},
-      create: { phone: body.phone },
+      create: { phone },
     })
 
     // Find an instance to use — prefer the specified one, else pick the first connected
