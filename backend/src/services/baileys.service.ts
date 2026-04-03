@@ -549,8 +549,11 @@ class BaileysManager {
     if (!session) throw new Error(`Instance "${instanceName}" is not connected`)
     if (!session.socket.user) throw new Error(`Instance "${instanceName}" is still connecting — wait for QR scan to complete`)
     const cleanPhone = phone.replace(/[\s\-\+]/g, '').replace(/^0+/, '')
-    const jid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`
-    logger.info({ instanceName, jid }, 'Sending text message')
+    // If the stored phone is a LID (temporary identifier), resolve to real phone
+    const resolvedPhone = await redis.get(`lid:${cleanPhone}`).catch(() => null)
+    const finalPhone = resolvedPhone ?? cleanPhone
+    const jid = finalPhone.includes('@') ? finalPhone : `${finalPhone}@s.whatsapp.net`
+    logger.info({ instanceName, storedPhone: phone, jid, wasLid: !!resolvedPhone }, 'Sending text message')
     return session.socket.sendMessage(jid, { text })
   }
 
@@ -564,7 +567,10 @@ class BaileysManager {
     const session = this.sessions.get(instanceName)
     if (!session) throw new Error(`Instance "${instanceName}" is not connected`)
     if (!session.socket.user) throw new Error(`Instance "${instanceName}" is still connecting — wait for QR scan to complete`)
-    const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`
+    const cleanPhone = phone.replace(/[\s\-\+]/g, '').replace(/^0+/, '')
+    const resolvedPhone = await redis.get(`lid:${cleanPhone}`).catch(() => null)
+    const finalPhone = resolvedPhone ?? cleanPhone
+    const jid = finalPhone.includes('@') ? finalPhone : `${finalPhone}@s.whatsapp.net`
 
     // If the URL points to a local upload, read the file as a buffer.
     // Baileys can send buffers directly — avoids issues with Docker-internal URLs.
