@@ -21,7 +21,7 @@ import { downloadProfilePic } from '../utils/downloadProfilePic'
 
 const SESSIONS_DIR = path.join(process.cwd(), 'baileys-sessions')
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads')
-const baileysLogger = pino({ level: 'silent' })
+const baileysLogger = pino({ level: 'warn' })
 
 interface SessionInfo {
   socket: WASocket
@@ -57,7 +57,8 @@ class BaileysManager {
       printQRInTerminal: false,
       logger: baileysLogger,
       browser: ['CRM WhatsApp', 'Chrome', '22.0'],
-      generateHighQualityLinkPreview: true,
+      generateHighQualityLinkPreview: false,
+      getMessage: async () => undefined,
     })
 
     this.sessions.set(instanceName, { socket })
@@ -119,6 +120,13 @@ class BaileysManager {
         await this.handleIncomingMessage(instanceName, msg).catch((err) => {
           logger.error({ instanceName, err: err.message }, 'Failed to process message')
         })
+      }
+    })
+
+    // Log delivery receipts — tells us if WhatsApp actually received the message
+    socket.ev.on('messages.update', (updates) => {
+      for (const update of updates) {
+        logger.info({ instanceName, id: update.key?.id, to: update.key?.remoteJid, status: update.update?.status }, 'Message delivery update')
       }
     })
 
