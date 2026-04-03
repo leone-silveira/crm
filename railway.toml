@@ -21,7 +21,7 @@ source = "frontend"
 
 [services.build]
 dockerfilePath = "Dockerfile"
-buildTarget = "local"
+buildTarget = "runner"
 
 [services.deploy]
 healthcheckPath = "/"

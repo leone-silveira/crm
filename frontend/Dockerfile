@@ -12,24 +12,18 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# ─── Production (Railway) ───────────────────────────────────────────────────
-FROM node:20-alpine AS runner
-WORKDIR /app
-
-RUN npm install -g serve
-
-COPY --from=builder /app/dist ./dist
-
+# ─── Production (Railway) & Local (docker-compose) ─────────────────────────
+FROM nginx:alpine AS runner
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 ENV PORT=80
 EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
 
-CMD ["sh", "-c", "serve dist -l $PORT -s"]
-
-# ─── Local with nginx (docker-compose) ──────────────────────────────────────
+# Keep 'local' as alias for backwards compatibility
 FROM nginx:alpine AS local
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
-ENV BACKEND_URL=http://localhost:3000
 ENV PORT=80
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
